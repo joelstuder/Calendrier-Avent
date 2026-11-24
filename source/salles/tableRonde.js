@@ -302,10 +302,8 @@ export function construireTableRonde({ decor = [], res }) {
     cases[jour] = c;
   }
 
-  // ── Porte vers la salle à manger (mur est) ──
+  // ── Porte vers la salle suivante (mur est) : la salle et la date viennent de calendrier.js ──
   const porte = creerPorte(L, 0, -Math.PI / 2);
-  porte.versSalle = 'salle-a-manger';
-  porte.jour = 8;
   add(porte.groupe);
 
   // ── Parchemins de décor ──
@@ -344,7 +342,6 @@ export function construireTableRonde({ decor = [], res }) {
       vaciller(flammes, t);
       braises.animer(dt, t);
       poussiere.animer(dt, t);
-      porte.animer(dt);
       feu.intensity = 52 + 10 * Math.sin(t * 11.7) + 6 * Math.sin(t * 5.3);
       torches.forEach((l, i) => { l.intensity = 16 + 2.5 * Math.sin(t * (8 + i) + i * 2) + 1.5 * Math.sin(t * 19 + i); });
     }

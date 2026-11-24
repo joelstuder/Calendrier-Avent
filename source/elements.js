@@ -90,8 +90,9 @@ export function creerCase(jour, x, z, rotY, { hauteur = 2.0, recul = 1.7 } = {})
   };
 }
 
-// Porte vers la salle suivante : un battant cintré qui pivote sur ses gonds, un passage lumineux derrière
-export function creerPorte(x, z, rotY, libelle = '') {
+// Porte vers la salle suivante : un battant cintré qui pivote sur ses gonds, un passage lumineux derrière.
+// type 'retour' : la porte par laquelle on est arrivé, qui ramène à la salle précédente.
+export function creerPorte(x, z, rotY, libelle = '', type = 'porte') {
   const g = new THREE.Group();
   g.position.set(x, 0, z); g.rotation.y = rotY;
   const matPorte = new THREE.MeshStandardMaterial({ map: T.porte(), roughness: 0.85, side: THREE.DoubleSide });
@@ -128,7 +129,7 @@ export function creerPorte(x, z, rotY, libelle = '') {
   const arc = new THREE.Mesh(new THREE.TorusGeometry(1.08, 0.14, 8, 24, Math.PI), pierre);
   arc.position.set(0, 2.5, 0.08); g.add(arc);
 
-  const action = { type: 'porte' };
+  const action = { type };
   for (const m of [bas, haut]) m.userData.action = action;
   if (libelle) {
     const ecriteau = new THREE.Mesh(new THREE.PlaneGeometry(1.7, 0.6), new THREE.MeshStandardMaterial({ map: T.parchemin([libelle], { taille: 40, W: 640, H: 224 }), roughness: 0.9 }));

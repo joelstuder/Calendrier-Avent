@@ -228,7 +228,10 @@ if (renderer) {
 }
 
 let salle = null;
-const etat = { yaw: 0, pitch: -0.04, cible: null, glisse: null };
+// Salles dans l'ordre du calendrier
+const salleVoisine = (id, sens) => { const i = D.salles.findIndex((s) => s.id === id); return i < 0 ? null : D.salles[i + sens] || null; };
+const premierJour = (s) => (s?.jours?.length ? Math.min(...s.jours) : 25);
+const etat ={ yaw: 0, pitch: -0.04, cible: null, glisse: null };
 const gifs = new Map();
 let modaleOuverte = false;
 let sequenceEnCours = false;
@@ -265,6 +268,10 @@ async function chargerSalle(id, progres) {
   if (salle) { scene.remove(salle.groupe); liberer(salle.groupe); gifs.clear(); }
   salle = def.construire({ decor: D.decor || [], res });
   salle.id = id;
+  // les portes mènent aux salles voisines dans l'ordre de calendrier.js (et s'ouvrent à leur premier jour)
+  const suivante = salleVoisine(id, 1), precedente = salleVoisine(id, -1);
+  if (salle.porte) { salle.porte.versSalle = suivante?.id || ''; salle.porte.jour = premierJour(suivante); }
+  if (salle.porteRetour) salle.porteRetour.versSalle = precedente?.id || '';
   appliquerQualiteSalle();
   scene.add(salle.groupe);
   scene.background = new THREE.Color(salle.brouillard);
@@ -391,6 +398,7 @@ function toucher(x, y) {
   const a = h.object.userData.action;
   if (a?.type === 'case') ouvrirDepuisMur(a.jour);
   else if (a?.type === 'porte') toucherPorte();
+  else if (a?.type === 'retour') passerLaPorte(-1);
   else if (a?.type === 'livre') allerVersLivre();
   else if (h.object.userData.sol) { etat.glisse = null; etat.cible = resoudre(h.point.x, h.point.z); }
 }
@@ -427,14 +435,46 @@ function ouvrirDepuisMur(j) {
 
 function toucherPorte() {
   const p = salle.porte;
+  if (!p.versSalle) { allerA(p.arret); toast('Cette porte ne mène nulle part… pour l\'instant.'); return; }
   if (!estOuverte(p.jour)) { allerA(p.arret); toast(`Cette porte s'ouvrira le ${p.jour} décembre.`); return; }
-  passerLaPorte();
+  passerLaPorte(1);
 }
 
-// La porte s'ouvre, on la traverse, et la salle suivante se charge de l'autre côté
-function passerLaPorte() {
-  const p = salle.porte;
-  if (sequenceEnCours) return;
+// Point devant une porte, côté salle, à une distance d (regard tourné vers la salle)
+function devantPorte(p, d) {
+  const g = p.groupe, ry = g.rotation.y;
+  return { x: g.position.x + Math.sin(ry) * d, z: g.position.z + Math.cos(ry) * d, yaw: ry + Math.PI, pitch: 0.02 };
+}
+
+// Charge une salle et y place le visiteur.
+// par 'avant' : on arrive de la salle précédente (par la porte de retour, jusqu'à l'entrée) ;
+// par 'arriere' : on revient de la salle suivante (par sa porte, qui se referme derrière nous) ;
+// sinon : au point de départ de la salle.
+async function arriverDans(id, par) {
+  try { localStorage.setItem(CLE_SALLE + id, '1'); } catch { /* rien */ }
+  await chargerSalle(id);
+  const porte = par === 'avant' ? salle.porteRetour : par === 'arriere' ? salle.porte : null;
+  const arrivee = par === 'avant' ? salle.entree || (porte && devantPorte(porte, 2.2)) : porte ? devantPorte(porte, 2.2) : null;
+  if (!arrivee) return;
+  if (porte && !MOUVEMENT_REDUIT) {
+    // on sort de l'embrasure de la porte, qui se referme derrière nous
+    const s = devantPorte(porte, 0.9);
+    camera.position.set(s.x, OEIL, s.z);
+    etat.yaw = arrivee.yaw; etat.pitch = arrivee.pitch ?? 0;
+    porte.ouverture = 1; porte.cible = 1;
+    allerA(arrivee, () => { porte.cible = 0; }, 1.3);
+  } else {
+    camera.position.set(arrivee.x, OEIL, arrivee.z);
+    etat.yaw = arrivee.yaw; etat.pitch = arrivee.pitch ?? 0;
+  }
+}
+
+// La porte s'ouvre, on la traverse, et la salle voisine se charge de l'autre côté.
+// sens 1 : vers la salle suivante ; sens -1 : retour à la salle précédente.
+function passerLaPorte(sens = 1) {
+  const p = sens > 0 ? salle.porte : salle.porteRetour;
+  if (!p || sequenceEnCours) return;
+  if (!p.versSalle) { allerA(p.arret); return; }
   sequenceEnCours = true;
   allerA(p.arret, () => {
     p.cible = 1;
@@ -449,17 +489,25 @@ function passerLaPorte() {
       const fondu = $('#fondu');
       setTimeout(() => fondu.classList.add('actif'), 700);
       setTimeout(async () => {
-        try { localStorage.setItem(CLE_SALLE + p.versSalle, '1'); } catch { /* rien */ }
-        await chargerSalle(p.versSalle);
-        if (salle.entree) {
-          camera.position.set(salle.entree.x, OEIL, salle.entree.z);
-          etat.yaw = salle.entree.yaw; etat.pitch = salle.entree.pitch ?? 0;
-        }
+        await arriverDans(p.versSalle, sens > 0 ? 'avant' : 'arriere');
         fondu.classList.remove('actif');
         sequenceEnCours = false;
       }, 1500);
     }, MOUVEMENT_REDUIT ? 300 : 1700);
   }, 0.8);
+}
+
+// Depuis la vue simple : aller directement dans une salle déjà ouverte (fondu au noir)
+async function allerDansSalle(id) {
+  if (sequenceEnCours || !CONSTRUCTEURS[id] || !salle || id === salle.id) return;
+  sequenceEnCours = true;
+  const fondu = $('#fondu');
+  fondu.classList.add('actif');
+  await new Promise((r) => setTimeout(r, MOUVEMENT_REDUIT ? 50 : 800));
+  const avant = D.salles.findIndex((s) => s.id === id) > D.salles.findIndex((s) => s.id === salle.id);
+  await arriverDans(id, avant ? 'avant' : 'arriere');
+  fondu.classList.remove('actif');
+  sequenceEnCours = false;
 }
 
 let ptr = null;
@@ -557,6 +605,8 @@ function boucle() {
   camera.rotation.set(etat.pitch, etat.yaw, 0);
 
   salle.animer(t);
+  salle.porte?.animer(dt);
+  salle.porteRetour?.animer(dt);
   const auj = jourDuCalendrier();
   for (const c of Object.values(salle.cases)) {
     // volets : ouverture amortie, avec un léger rebond
@@ -757,18 +807,26 @@ $('#mRevoir').addEventListener('click', revoir);
 // ── Vue simple : grille des 24 cases ──
 function majGrille() {
   const auj = jourDuCalendrier();
-  $('#gContenu').innerHTML = D.salles.map((s) => `
+  $('#gContenu').innerHTML = D.salles.map((s) => {
+    const ici = salle && s.id === salle.id;
+    const accessible = renderer && salle && !ici && CONSTRUCTEURS[s.id] && estOuverte(premierJour(s));
+    const lien = ici ? ' <span class="ici">vous êtes ici</span>'
+      : accessible ? ` <button class="lien aller" data-salle="${esc(s.id)}">aller dans cette salle</button>` : '';
+    return `
     <section>
-      <h3>${esc(s.nom)}</h3>
+      <h3>${esc(s.nom)}${lien}</h3>
       <div class="cases">${s.jours.map((j) => {
         const o = estOuverte(j), v = vus.has(j);
         const cls = !o ? 'fermee' : v ? 'vue' : 'ouverte';
         const lib = !o ? `le ${j} déc.` : v ? 'vue' : 'à ouvrir';
         return `<button class="case ${cls}${j === auj ? ' aujourdhui' : ''}" data-jour="${j}"><span class="num">${j}</span><span class="etat">${lib}</span></button>`;
       }).join('')}</div>
-    </section>`).join('');
+    </section>`;
+  }).join('');
 }
 $('#gContenu').addEventListener('click', (e) => {
+  const aller = e.target.closest('.aller');
+  if (aller) { $('#grille').hidden = true; allerDansSalle(aller.dataset.salle); return; }
   const b = e.target.closest('.case');
   if (!b) return;
   const j = +b.dataset.jour;

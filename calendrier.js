@@ -13,6 +13,9 @@
 //     gif / mp3  : fichiers déposés dans le dossier "medias",
 //                  ex. "medias/02.gif" et "medias/02.mp3"
 //
+//  salles : dans l'ordre de la visite. Chaque porte mène à la salle
+//           suivante de cette liste et s'ouvre à son premier jour.
+//
 //  decor : répliques affichées sur les parchemins aux murs.
 //          Choisir des répliques qui ne sont PAS dans le calendrier
 //          (ou déjà révélées) pour ne rien gâcher.
@@ -24,8 +27,8 @@ window.CALENDRIER = {
     { id: "table-ronde",    nom: "La salle de la Table ronde", jours: [1, 2, 3, 4, 5, 6, 7] },
     { id: "salle-a-manger", nom: "La salle à manger",          jours: [8, 9, 10, 11, 12, 13, 14] },
     { id: "chambre-du-roi", nom: "La chambre du roi",          jours: [15, 16, 17, 18, 19, 20, 21] },
-    { id: "cour-enneigee",  nom: "La cour sous la neige",      jours: [22, 23] },
-    { id: "salle-du-trone", nom: "La salle du trône",          jours: [24] }
+    { id: "taverne",        nom: "La taverne",                 jours: [22, 23] },
+    { id: "cour-enneigee",  nom: "La cour sous la neige",      jours: [24] }
   ],
 
   cases: [
