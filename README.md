@@ -20,4 +20,4 @@ Ajouter `#apercu` à la fin de l'adresse : un menu permet de choisir un « jour 
 - `textures/`, `modeles/` : textures et objets 3D libres de droits (Poly Haven, CC0)
 - `medias/` : GIF et MP3 des répliques (générés sur kaamelott.fspot.org)
 
-Après une modification dans `source/`, lancer `./build.sh` pour régénérer `js/app.js`.
+Après une modification dans `source/`, `calendrier.js` ou `style.css`, lancer `./build.sh` : il régénère `js/app.js` et met à jour les numéros de version (`?v=…`) dans `index.html`, pour que les navigateurs prennent tout de suite la nouvelle version.
