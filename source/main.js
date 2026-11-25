@@ -129,6 +129,30 @@ function quitterPleinEcran() {
   pleinEcranParNous = false;
 }
 
+// Bouton « Plein écran » : le château occupe tout l'écran, jusqu'à ce qu'on le quitte.
+// (Quand c'est ce bouton qui l'a demandé, la fin d'un épisode ne le quitte pas.)
+// Caché là où le navigateur ne sait pas le faire (iPhone, appli sur l'écran d'accueil).
+const elementPleinEcran = () => document.fullscreenElement || document.webkitFullscreenElement || null;
+function basculerPleinEcran() {
+  const el = document.documentElement;
+  if (elementPleinEcran()) {
+    pleinEcranParNous = false;
+    (document.exitFullscreen || document.webkitExitFullscreen)?.call(document);
+    return;
+  }
+  const demande = el.requestFullscreen || el.webkitRequestFullscreen;
+  if (!demande) return;
+  pleinEcranParNous = false;
+  try { const r = demande.call(el); if (r?.catch) r.catch(() => toast('Le navigateur a refusé le plein écran.')); } catch { /* refusé */ }
+}
+function majBoutonPleinEcran() {
+  const b = document.querySelector('#btnPleinEcran');
+  if (!b) return;
+  const actif = !!elementPleinEcran();
+  b.setAttribute('aria-pressed', String(actif));
+  b.querySelector('.lib').textContent = actif ? 'Quitter le plein écran' : 'Plein écran';
+}
+
 // ── Scène 3D ──
 const canvas = $('#scene');
 let renderer = null;
@@ -847,6 +871,13 @@ $('#gContenu').addEventListener('click', (e) => {
 });
 $('#btnGrille').addEventListener('click', () => { majGrille(); $('#grille').hidden = false; });
 $('#gFermer').addEventListener('click', () => { if (renderer) $('#grille').hidden = true; });
+
+if (document.fullscreenEnabled || document.webkitFullscreenEnabled) {
+  $('#btnPleinEcran').hidden = false;
+  $('#btnPleinEcran').addEventListener('click', basculerPleinEcran);
+  document.addEventListener('fullscreenchange', majBoutonPleinEcran);
+  document.addEventListener('webkitfullscreenchange', majBoutonPleinEcran);
+}
 
 $('#btnSon').addEventListener('click', () => {
   sonActif = !sonActif;
