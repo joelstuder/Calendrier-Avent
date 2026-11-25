@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import * as T from '../textures.js';
 import { creerCase, creerPorte, creerParchemin, creerFlamme, creerBraises, creerPoussiere, vaciller, MATERIAUX } from '../elements.js';
+import { creerChevalier, EMAUX as E } from './chevaliers.js';
 
 const L = 9, P = 7, H = 6.5;          // demi-largeur (x), demi-profondeur (z), hauteur
 
@@ -205,20 +206,6 @@ export function construireTableRonde({ decor = [], res }) {
     boite(0.1, 0.12, 2.1, matBoisSombre, x2, 0.18, z2, a2 + Math.PI / 2);
   }
 
-  // casques posés sur la table, devant les sièges
-  const matCasque = new THREE.MeshStandardMaterial({ color: 0xc8c8c4, metalness: 0.9, roughness: 0.32 });
-  const matFente = new THREE.MeshBasicMaterial({ color: 0x0a0a0a });
-  const casque = (a, r) => {
-    const g = new THREE.Group();
-    const corps = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.13, 0.27, 16), matCasque); corps.position.y = 0.135; g.add(corps);
-    const dome = new THREE.Mesh(new THREE.SphereGeometry(0.12, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), matCasque); dome.scale.y = 0.45; dome.position.y = 0.27; g.add(dome);
-    const fente = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.018, 0.02), matFente); fente.position.set(0, 0.19, 0.122); g.add(fente);
-    const nasal = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.2, 0.02), matCasque); nasal.position.set(0, 0.12, 0.128); g.add(nasal);
-    g.position.set(Math.sin(a) * r, yT + 0.04, Math.cos(a) * r);
-    g.rotation.y = a + Math.PI;
-    add(g);
-  };
-  for (const k of [1, 3, 4, 7, 9, 11]) casque(Math.PI + (k / 12) * Math.PI * 2 + 0.12, 2.45);
   const coupes = res.modele('coupes', 0.22);
   if (coupes) { coupes.position.set(0.55, yT + 0.04, 0.35); add(coupes); }
 
@@ -258,6 +245,30 @@ export function construireTableRonde({ decor = [], res }) {
       }
     }
     add(c);
+  }
+
+  // ── Les chevaliers attablés (personnages originaux, un par siège) ──
+  const tablee = {
+    0: { couleur: E.gueules, couleur2: E.or, motif: 'croix', casque: 'heaume', cimier: 'couronne', pose: 'table', carrure: 1.08 },
+    1: { couleur: E.azur, couleur2: E.argent, motif: 'parti', casque: 'bec', cimier: 'plumet', couleurCimier: 0xece6d8, pose: 'croise', carrure: 1.0 },
+    2: { couleur: E.sinople, couleur2: E.or, motif: 'fasce', casque: 'conique', pose: 'table', carrure: 0.95 },
+    3: { couleur: E.tanne, couleur2: E.sable, motif: 'pal', casque: 'chapel', pose: 'adosse', carrure: 1.12 },
+    4: { couleur: E.pourpre, couleur2: E.argent, motif: 'croix', casque: 'barbute', cimier: 'boule', pose: 'coupe', carrure: 0.98 },
+    5: { couleur: E.sable, couleur2: E.or, motif: 'parti', casque: 'salade', pose: 'table', carrure: 1.02 },
+    7: { couleur: E.argent, couleur2: E.gueules, motif: 'croix', casque: 'heaume', cimier: 'cornes', couleurCimier: 0xe6dcc4, pose: 'poing', carrure: 1.1 },
+    8: { couleur: E.sinople, couleur2: E.argent, motif: 'fasce', casque: 'bec', pose: 'table', carrure: 0.94 },
+    9: { couleur: E.azur, couleur2: E.or, motif: 'croix', casque: 'conique', cimier: 'ailes', couleurCimier: E.or, pose: 'adosse', carrure: 1.0 },
+    10: { couleur: 0xb5652a, casque: 'barbute', cimier: 'plumet', couleurCimier: E.gueules, pose: 'croise', carrure: 1.05 },
+    11: { couleur: E.gueules, couleur2: E.azur, motif: 'parti', casque: 'chapel', pose: 'table', carrure: 0.97 }
+  };
+  const chevaliers = [];
+  for (const [k, o] of Object.entries(tablee)) {
+    const a = (k / 12) * Math.PI * 2 + Math.PI;
+    const ch = creerChevalier({ ...o, phase: k * 1.7 });
+    ch.groupe.position.set(Math.sin(a) * RC, 0, Math.cos(a) * RC);
+    ch.groupe.rotation.y = a;
+    add(ch.groupe);
+    chevaliers.push(ch);
   }
 
   // ── Coin du pupitre : vitrail et lutrin avec le grand livre ──
@@ -340,6 +351,7 @@ export function construireTableRonde({ decor = [], res }) {
     animer(t) {
       const dt = Math.min(0.05, Math.max(0, t - tPrec)); tPrec = t;
       vaciller(flammes, t);
+      for (const ch of chevaliers) ch.animer(t);
       braises.animer(dt, t);
       poussiere.animer(dt, t);
       feu.intensity = 52 + 10 * Math.sin(t * 11.7) + 6 * Math.sin(t * 5.3);
