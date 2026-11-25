@@ -34,7 +34,7 @@ const dateCase = (j) => new Date(D.annee, 11, j);
 function jourDuCalendrier() {
   if (jourSimule) return jourSimule;
   const n = new Date();
-  if (n < dateCase(1)) return 0;
+  if (n < dateCase(1)) return +D.avantPremiere || 0; // avant-première : case(s) déjà ouverte(s) avant décembre
   if (n.getFullYear() === D.annee && n.getMonth() === 11) return Math.min(n.getDate(), 25);
   return 25;
 }
@@ -54,9 +54,9 @@ function idYoutube(v) {
 // Un jour peut avoir une ou plusieurs répliques (l'ancien format à une réplique est accepté aussi)
 function repliques(d) {
   if (Array.isArray(d.repliques) && d.repliques.length) {
-    return d.repliques.map((r) => ({ texte: r.texte || r.replique || '', personnage: r.personnage || '', gif: r.gif || '', mp3: r.mp3 || '' }));
+    return d.repliques.map((r) => ({ texte: r.texte || r.replique || '', personnage: r.personnage || '', gif: r.gif || '', mp3: r.mp3 || '', mp4: r.mp4 || '' }));
   }
-  return [{ texte: d.replique || '', personnage: d.personnage || '', gif: d.gif || '', mp3: d.mp3 || '' }];
+  return [{ texte: d.replique || '', personnage: d.personnage || '', gif: d.gif || '', mp3: d.mp3 || '', mp4: d.mp4 || '' }];
 }
 const guillemets = (r) => (r.texte ? `« ${r.texte} »` : 'Réplique à renseigner');
 const mp3sDu = (d) => repliques(d).map((r) => r.mp3).filter(Boolean);
@@ -763,10 +763,11 @@ function reveler() {
     }
     if (r.gif) act.append(telecharger(r.gif, base + '.gif', 'Télécharger le GIF'));
     if (r.mp3) act.append(telecharger(r.mp3, base + '.mp3', "Télécharger l'audio"));
+    if (r.mp4) act.append(telecharger(r.mp4, base + '.mp4', 'Télécharger la vidéo'));
     if (act.children.length) bloc.append(act);
     liste.append(bloc);
   });
-  $('#mSansFichiers').hidden = R.some((r) => r.gif || r.mp3);
+  $('#mSansFichiers').hidden = R.some((r) => r.gif || r.mp3 || r.mp4);
   $('#mRevel').hidden = false;
   $('#mRevel').scrollTop = 0;
   $('#mPasser').hidden = true;
