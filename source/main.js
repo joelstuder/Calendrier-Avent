@@ -808,22 +808,31 @@ $('#mRevoir').addEventListener('click', revoir);
 // ── Vue simple : grille des 24 cases ──
 function majGrille() {
   const auj = jourDuCalendrier();
-  $('#gContenu').innerHTML = D.salles.map((s) => {
+  const caseHtml = (j) => {
+    const o = estOuverte(j), v = vus.has(j);
+    const cls = !o ? 'fermee' : v ? 'vue' : 'ouverte';
+    const lib = !o ? `le ${j} déc.` : v ? 'vue' : 'à ouvrir';
+    return `<button class="case ${cls}${j === auj ? ' aujourdhui' : ''}" data-jour="${j}"><span class="num">${j}</span><span class="etat">${lib}</span></button>`;
+  };
+  // Seules les salles déjà ouvertes sont nommées ; les suivantes restent une surprise
+  // (leurs cases sont regroupées sans nom ni découpage par salle).
+  const ouvertes = D.salles.filter((s) => estOuverte(premierJour(s)));
+  const aVenir = D.salles.filter((s) => !estOuverte(premierJour(s))).flatMap((s) => s.jours);
+  $('#gContenu').innerHTML = ouvertes.map((s) => {
     const ici = salle && s.id === salle.id;
-    const accessible = renderer && salle && !ici && CONSTRUCTEURS[s.id] && estOuverte(premierJour(s));
+    const accessible = renderer && salle && !ici && CONSTRUCTEURS[s.id];
     const lien = ici ? ' <span class="ici">vous êtes ici</span>'
       : accessible ? ` <button class="lien aller" data-salle="${esc(s.id)}">aller dans cette salle</button>` : '';
     return `
     <section>
       <h3>${esc(s.nom)}${lien}</h3>
-      <div class="cases">${s.jours.map((j) => {
-        const o = estOuverte(j), v = vus.has(j);
-        const cls = !o ? 'fermee' : v ? 'vue' : 'ouverte';
-        const lib = !o ? `le ${j} déc.` : v ? 'vue' : 'à ouvrir';
-        return `<button class="case ${cls}${j === auj ? ' aujourdhui' : ''}" data-jour="${j}"><span class="num">${j}</span><span class="etat">${lib}</span></button>`;
-      }).join('')}</div>
+      <div class="cases">${s.jours.map(caseHtml).join('')}</div>
     </section>`;
-  }).join('');
+  }).join('') + (aVenir.length ? `
+    <section>
+      <h3>La suite… surprise !</h3>
+      <div class="cases">${aVenir.map(caseHtml).join('')}</div>
+    </section>` : '');
 }
 $('#gContenu').addEventListener('click', (e) => {
   const aller = e.target.closest('.aller');
